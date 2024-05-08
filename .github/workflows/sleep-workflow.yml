@@ -1,0 +1,17 @@
+# Marks all newly opened and reopened pull requests as drafts
+# and adds a helpful comment to the PR
+name: sleep 15
+on:
+  pull_request:
+    types: [ ready_for_review ]
+#   check:
+#     types: [ completed]
+
+jobs:
+  sleep:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: sleep 15
+        shell: bash
+        run: sleep 15
