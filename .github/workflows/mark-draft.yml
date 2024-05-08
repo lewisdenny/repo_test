@@ -10,6 +10,7 @@ jobs:
     permissions: write-all
     steps:
       - name: Set to draft and add comment
+        if: github.event.pull_request.draft == false
         shell: bash
         run: >
           gh pr ready "$URL" --undo && 
