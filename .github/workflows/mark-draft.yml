@@ -1,5 +1,6 @@
-# Marks all newly opened pull requests as drafts
-name: Draft on Open
+# Marks all newly opened and reopened pull requests as drafts
+# and adds a helpful comment to the PR
+name: Set to draft when PR is [re]opened
 on:
   pull_request:
     types: [ opened, reopened ]
