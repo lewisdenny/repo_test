@@ -1,28 +1,24 @@
-# Marks all newly opened pull requests as drafts
-name: Draft on Open
+# Marks all newly opened and reopened pull requests as drafts
+# and adds a helpful comment to the PR
+name: Set to draft when PR is [re]opened
 on:
   pull_request:
-    types: [ opened ]
+    types: [ opened, reopened ]
 
 jobs:
   mark-as-draft:
-    name: Mark as draft
-    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    permissions: write-all
     steps:
-      - name: Mark as draft
-        uses: voiceflow/draft-pr@latest
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-  # label_issues:
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     issues: write
-  #   steps:
-  #     - run: gh pr ready "$NUMBER" --undo
-  #       env:
-  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         GH_REPO: ${{ github.repository }}
-  #         NUMBER: ${{ github.event.issue.number }}
-  #         # LABELS: auto-draft
+      - name: Set to draft and add comment
+        if: github.event.pull_request.draft == false
+        shell: bash
+        run: >
+          gh pr ready "$URL" --undo && 
+          printf 'Thanks for the PR! :heart:\nI am marking it as a draft,
+          once passing your happy and the PR is passing CI click the
+          \"Ready for review\" button below.' |
+          gh pr comment "$URL" -F -
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: ${{ github.event.pull_request.html_url }}
