@@ -1,0 +1,79 @@
+# Marks a PR with the ready_for_review_label label if
+# there are:
+#   - There are no failed CI jobs
+#   - There are no Pending CI jobs excluding Tide
+#   - The PR isn't in draft state
+#   - The commmit isn't found in more than one PR
+# Removes the label if any of those checks fail.
+name: Set Ready For Review label
+on:
+  - status
+jobs:
+  add-label:
+    runs-on: ubuntu-latest
+    permissions: # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+      contents: write # Required for Setting label
+      pull-requests: write # Required for Setting label  
+    steps:
+      - name: Set Ready For Review label
+        shell: bash
+        run: |
+          # Verify the result of commit status. To pass, no status can be in failure state and only tide can be in pending state
+          # Example jq_status_output:
+              # {"state":"success","context":"docs/readthedocs.org:ci-framework"}
+              # {"state":"success","context":"ci/prow/images"}
+              # {"state":"success","context":"ci/prow/ansible-test"}
+              # {"state":"pending","context":"tide"}
+              # {"state":"failure","context":"rdoproject.org/github-check"}
+
+              status_output=$(gh api -H "${accept_header}" -H "${api_header}" repos/${GITHUB_REPOSITORY}/status/${GH_EVENT_SHA})
+              jq_status_output=$(echo "${status_output}" | jq -c '.statuses[] | {state: .state, context: .context}')
+              ready=true
+              echo "$ready"
+              for row in ${jq_status_output}; do
+                  _jq() {
+                  echo "${row}" | jq -r "${1}"
+                  }
+              
+                  if [ $(_jq '.state') == 'failure' ]; then
+                      echo "$(_jq '.context') failed, exiting"
+                      ready=false
+                      break
+                  fi
+                  if [ $(_jq '.state') == 'pending' ] && [ $(_jq '.context') != 'tide' ] ; then
+                      echo "$(_jq '.context') still pending, exiting"
+                      ready=false
+                      break
+                  fi
+              done
+              
+              # Get the PR number from the commit SHA, to pass the commit SHA must only be in one PR
+              pr_search_result=$(gh pr list --search "${GH_EVENT_SHA}" -R "${GITHUB_REPOSITORY}" --json number | jq -c)
+              pr_search_result_length=$(echo "${pr_search_result}" | jq length)
+              if [ "$pr_search_result_length" -ne 1 ]; then
+                  echo "Commit not found or in multiple PRs"
+                  exit 1
+              fi
+              
+              # Define draft_status and set $ready false if PR is in draft state
+              draft_status=$(echo "${pr_search_result}" | jq '.[].isDraft')
+              if [ "$draft_status" = "true" ]; then
+                  ready=false
+              fi
+              
+              # Define pr_number and set or remove ready_for_review_label on PR
+              pr_number=$(echo "${pr_search_result}" | jq '.[].number')
+              if [ "$ready" = "true" ]; then
+                  echo "Setting label: ${ready_for_review_label} on PR: ${pr_number}"
+                  gh pr edit "${pr_number}" --add-label "${ready_for_review_label}" -R "${GITHUB_REPOSITORY}"
+              else
+                  echo "Removing label: ${ready_for_review_label} from PR: ${pr_number}"
+                  gh pr edit "${pr_number}" --remove-label "${ready_for_review_label}" -R "${GITHUB_REPOSITORY}"
+              fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          accept_header: 'Accept: application/vnd.github+json'
+          api_header: 'X-GitHub-Api-Version: 2022-11-28'
+          GH_PAGER: ''
+          ready_for_review_label: "Ready For Review"
+          GH_EVENT_SHA: ${{ github.event.commit.SHA }}

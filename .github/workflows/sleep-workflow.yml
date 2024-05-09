@@ -4,14 +4,13 @@ name: sleep 15
 on:
   pull_request:
     types: [ ready_for_review ]
-#   check:
-#     types: [ completed]
+
 
 jobs:
   sleep:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: sleep 15
+      - name: sleep 5
         shell: bash
-        run: sleep 15
+        run: sleep 5
