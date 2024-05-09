@@ -3,25 +3,14 @@
 name: Set to draft when PR is [re]opened
 on:
   pull_request:
-    types: [ opened, reopened ]
+    types: [ opened, reopened, ready_for_review]
 
 jobs:
   mark-as-draft:
     runs-on: ubuntu-latest
     permissions: # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
-      actions: write
-      checks: write
-      contents: write
-      deployments: write
-      id-token: write
-      issues: write
-      discussions: write
-      packages: write
-      pages: write
-      pull-requests: write
-      repository-projects: write
-      security-events: write
-      statuses: write
+      contents: write # Required for setting draft state
+      pull-requests: write # Required for posting comment
     steps:
       - name: Set to draft and add comment
         if: github.event.pull_request.draft == false
